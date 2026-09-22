@@ -19,7 +19,7 @@ namespace LockGuard
     static class Program
     {
         public const string AppTitle = "LockGuard";
-        public const string Version = "3.1";
+        public const string Version = "1.0";
         public const string SingleInstanceId = "LockGuard_SingleInstance_v3";
         public const string ShowEventId = "LockGuard_ShowEvent_v3";        public static Icon AppIcon;
         public static string AppPath;

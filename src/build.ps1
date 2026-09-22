@@ -1,7 +1,7 @@
-# Build LockGuard v3.1 - compiles LockGuard.exe, then the NSIS installer if available
+# Build LockGuard v1.0 - compiles LockGuard.exe, then the NSIS installer if available
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-$ver = "3.1"
+$ver = "1.0"
 
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) { $csc = "C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe" }
@@ -11,7 +11,7 @@ $appManifest = Join-Path $PSScriptRoot "LockGuard.manifest"
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="3.1.0.0" name="LockGuard.app"/>
+  <assemblyIdentity version="1.0.0.0" name="LockGuard.app"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>

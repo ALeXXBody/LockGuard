@@ -1,6 +1,6 @@
 ; =====================================================================
-;  LockGuard 3.1 - NSIS installer
-;  Builds LockGuard-3.1-Setup.exe: UAC-elevated Windows installer with
+;  LockGuard 1.0 - NSIS installer
+;  Builds LockGuard-1.0-Setup.exe: UAC-elevated Windows installer with
 ;  wizard UI, shortcuts, autostart scheduled task, audit policies and a
 ;  real uninstaller registered in Programs and Features.
 ;
@@ -12,8 +12,8 @@ Unicode true
 ManifestDPIAware true
 
 !define APP_NAME        "LockGuard"
-!define APP_VERSION     "3.1"
-!define APP_VERSION_F   "3.1.0.0"
+!define APP_VERSION     "1.0"
+!define APP_VERSION_F   "1.0.0.0"
 !define PUBLISHER       "LockGuard"
 !define TASK_NAME       "LockGuard_NightInternetMonitor"
 !define UNINST_KEY      "Software\Microsoft\Windows\CurrentVersion\Uninstall\LockGuard"
