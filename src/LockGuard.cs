@@ -13,7 +13,6 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
-using System.Diagnostics.Eventing.Reader;
 
 namespace LockGuard
 {
@@ -991,6 +990,102 @@ namespace LockGuard
         }
     }
 
+    // ---------- Security event log parsing (wevtutil XML) ----------
+    public class LockEvent
+    {
+        public int Id;
+        public string User;
+        public ulong Record;
+    }
+
+    // Pure XML-parsing helpers for wevtutil /f:xml output of the Security log.
+    // Kept UI-free so they can be unit tested headlessly.
+    public static class EventParser
+    {
+        // Parses concatenated <Event> records and extracts lock/unlock events.
+        public static List<LockEvent> ParseXml(string xml)
+        {
+            var events = new List<LockEvent>();
+            if (string.IsNullOrEmpty(xml)) return events;
+            int pos = 0;
+            while (true)
+            {
+                int s = xml.IndexOf("<Event xmlns", pos, StringComparison.Ordinal);
+                if (s < 0) break;
+                int e = xml.IndexOf("</Event>", s, StringComparison.Ordinal);
+                if (e < 0) break;
+                string rec = xml.Substring(s, e - s);
+                pos = e + 8;
+
+                var le = new LockEvent();
+                le.Record = ParseTagUlong(rec, "EventRecordID");
+                le.Id = (int)ParseTagUlong(rec, "EventID");
+                le.User = ParseTagString(rec, "TargetUserName");
+                if (string.IsNullOrEmpty(le.User)) le.User = "unknown";
+                events.Add(le);
+            }
+            return events;
+        }
+
+        public static ulong ParseTagUlong(string xml, string tag)
+        {
+            ulong v = 0;
+            string val = ExtractTagValue(xml, tag);
+            if (val != null) ulong.TryParse(val.Trim(), out v);
+            return v;
+        }
+
+        public static string ParseTagString(string xml, string tag)
+        {
+            return ExtractTagValue(xml, tag);
+        }
+
+        // Finds <tag ...>value</tag>, tolerating attributes on the opening tag
+        // (e.g. "<EventID Qualifiers='16384'>4800</EventID>") and single or
+        // double quotes in the attribute list. Does not confuse <EventID> with
+        // <EventRecordID> because the match is anchored on "<" + tag.
+        static string ExtractTagValue(string xml, string tag)
+        {
+            // <Data Name="tag"> / <Data Name='tag'> style lookup first (EventData fields)
+            string dOpen = "<Data Name=\"";
+            string dOpen2 = "<Data Name='";
+            int s = xml.IndexOf(dOpen + tag + "\">", StringComparison.Ordinal);
+            int len = (dOpen + tag + "\">").Length;
+            if (s < 0)
+            {
+                s = xml.IndexOf(dOpen2 + tag + "'>", StringComparison.Ordinal);
+                len = (dOpen2 + tag + "'>").Length;
+            }
+            if (s >= 0)
+            {
+                s += len;
+                int e = xml.IndexOf("</Data>", s, StringComparison.Ordinal);
+                if (e < 0) return null;
+                return xml.Substring(s, e - s).Trim();
+            }
+
+            // Plain <tag>value</tag> or <tag ATTRS>value</tag>
+            string needle = "<" + tag;
+            int p = 0;
+            while (true)
+            {
+                s = xml.IndexOf(needle, p, StringComparison.Ordinal);
+                if (s < 0) return null;
+                p = s + needle.Length;
+                // must be followed by '>' or whitespace (not another letter, e.g. EventID vs EventRecordID)
+                if (p >= xml.Length) return null;
+                char c = xml[p];
+                if (c != '>' && !char.IsWhiteSpace(c)) continue;
+                int openEnd = xml.IndexOf('>', p);
+                if (openEnd < 0) return null;
+                string close = "</" + tag + ">";
+                int e = xml.IndexOf(close, openEnd, StringComparison.Ordinal);
+                if (e < 0) return null;
+                return xml.Substring(openEnd + 1, e - openEnd - 1).Trim();
+            }
+        }
+    }
+
     // ===================================================================
     //  MAIN FORM
     // ===================================================================
@@ -1717,33 +1812,56 @@ namespace LockGuard
             catch { }
         }
 
+        // Poll the Security log for workstation lock/unlock (4800-4803) via wevtutil.
+        // wevtutil is always present on Windows, needs no special assemblies, and the
+        // XML output is stable across Windows versions.
+        List<LockEvent> ReadLockEvents()
+        {
+            var events = new List<LockEvent>();
+            string xml = "";
+            try
+            {
+                var psi = new ProcessStartInfo("wevtutil.exe",
+                    "qf Security \"*[System[(EventID=4800 or EventID=4801 or EventID=4802 or EventID=4803)]]\" /f:xml /c:50 /rd:true /q:true")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                using (Process p = Process.Start(psi))
+                {
+                    xml = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(10000);
+                    if (p.ExitCode != 0) return events;
+                }
+            }
+            catch { }
+            return EventParser.ParseXml(xml);
+        }
+
         void PollEvents()
         {
             try
             {
-                string query = "*[System[(EventID=4800 or EventID=4801 or EventID=4802 or EventID=4803)]]";
-                var logQuery = new EventLogQuery("Security", PathType.LogName, query);
-                logQuery.ReverseDirection = true;
-                using (EventLogReader reader = new EventLogReader(logQuery))
+                var events = ReadLockEvents();
+                bool night = cfg.IsNight(DateTime.Now.Hour);
+                // wevtutil /rd:true returns newest first; events[0] is the newest record.
+                for (int i = events.Count - 1; i >= 0; i--)
                 {
-                    EventRecord ev;
-                    bool night = cfg.IsNight(DateTime.Now.Hour);
-                    while ((ev = reader.ReadEvent()) != null)
+                    var ev = events[i];
+                    if (lastRecordId == 0)
                     {
-                        long rec = ev.RecordId.GetValueOrDefault();
-                        if (lastRecordId == 0)
-                        {
-                            // First poll after startup: skip history, remember newest record only.
-                            lastRecordId = (ulong)rec;
-                            continue;
-                        }
-                        if ((ulong)rec <= lastRecordId) continue;
-                        lastRecordId = (ulong)rec;
-                        string user = "unknown";
-                        try { if (ev.Properties != null && ev.Properties.Count > 1) user = Convert.ToString(ev.Properties[1].Value); } catch { }
-                        HandleEvent((int)ev.Id, user, night);
+                        // First poll after startup: skip history, remember newest record only.
+                        if (ev.Record > lastRecordId) lastRecordId = ev.Record;
+                        continue;
                     }
+                    if (ev.Record <= lastRecordId) continue;
+                    if (ev.Record > lastRecordId) lastRecordId = ev.Record;
+                    HandleEvent(ev.Id, ev.User, night);
                 }
+                if (lastRecordId == 0 && events.Count > 0) lastRecordId = events[0].Record;
             }
             catch { }
         }
