@@ -20,10 +20,9 @@ namespace LockGuard
     static class Program
     {
         public const string AppTitle = "LockGuard";
-        public const string Version = "3.0";
+        public const string Version = "3.1";
         public const string SingleInstanceId = "LockGuard_SingleInstance_v3";
-        public const string ShowEventId = "LockGuard_ShowEvent_v3";
-        public static Icon AppIcon;
+        public const string ShowEventId = "LockGuard_ShowEvent_v3";        public static Icon AppIcon;
         public static string AppPath;
 
         [STAThread]
@@ -90,47 +89,53 @@ namespace LockGuard
                 try { Logger.Error("Unhandled exception: " + e.ExceptionObject); } catch { }
             };
 
-            var cfg = ConfigManager.Load();
-            if (!cfg.Configured)
+            try
             {
+                var cfg = ConfigManager.Load();
+                if (!cfg.Configured)
+                {
                 var setup = new PasswordSetupForm();
-                if (setup.ShowDialog() == DialogResult.OK && setup.Password.Length >= 4)
-                {
-                    cfg.SetPassword(setup.Password);
-                    cfg.Save();
+                if (setup.ShowDialog() == DialogResult.OK && setup.Password.Trim().Length >= 4)
+                    {
+                        cfg.SetPassword(setup.Password);
+                        cfg.Save();
+                    }
+                    else
+                    {
+                        MessageBox.Show("A password is required to use LockGuard.\n\nPlease run LockGuard again and set a password.",
+                            "LockGuard - Setup Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
-                else
-                {
-                    MessageBox.Show("A password is required to use LockGuard.\n\nPlease run LockGuard again and set a password.",
-                        "LockGuard - Setup Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-            }
 
-            var main = new MainForm(cfg, showEvent);
-            Application.Run(main);
-            mtx.ReleaseMutex();
+                var main = new MainForm(cfg, showEvent);
+                Application.Run(main);
+            }
+            finally
+            {
+                try { mtx.ReleaseMutex(); } catch { }
+            }
         }
     }
 
     // ---------- Color/font/glow helpers ----------
     public static class UI
     {
-        public static Color Bg       = Color.FromArgb(10, 14, 20);
-        public static Color Bg2      = Color.FromArgb(13, 18, 26);
-        public static Color Card     = Color.FromArgb(17, 23, 34);
-        public static Color CardAlt  = Color.FromArgb(22, 32, 46);
-        public static Color Text     = Color.FromArgb(230, 238, 246);
-        public static Color Dim      = Color.FromArgb(138, 154, 176);
-        public static Color Accent   = Color.FromArgb(56, 189, 248);
-        public static Color AccentDark = Color.FromArgb(14, 116, 144);
-        public static Color Violet   = Color.FromArgb(167, 139, 250);
-        public static Color Green    = Color.FromArgb(52, 211, 153);
-        public static Color GreenDark = Color.FromArgb(16, 110, 80);
-        public static Color Red      = Color.FromArgb(248, 113, 113);
-        public static Color RedDark  = Color.FromArgb(150, 45, 55);
-        public static Color Orange   = Color.FromArgb(251, 191, 36);
-        public static Color Border   = Color.FromArgb(31, 43, 61);
+        public static Color Bg       = Color.FromArgb(7, 10, 17);
+        public static Color Bg2      = Color.FromArgb(10, 14, 23);
+        public static Color Card     = Color.FromArgb(13, 18, 30);
+        public static Color CardAlt  = Color.FromArgb(19, 27, 44);
+        public static Color Text     = Color.FromArgb(226, 235, 248);
+        public static Color Dim      = Color.FromArgb(118, 134, 160);
+        public static Color Accent   = Color.FromArgb(0, 217, 255);
+        public static Color AccentDark = Color.FromArgb(0, 120, 155);
+        public static Color Violet   = Color.FromArgb(162, 120, 255);
+        public static Color Green    = Color.FromArgb(0, 230, 150);
+        public static Color GreenDark = Color.FromArgb(0, 90, 65);
+        public static Color Red      = Color.FromArgb(255, 90, 110);
+        public static Color RedDark  = Color.FromArgb(140, 35, 50);
+        public static Color Orange   = Color.FromArgb(255, 176, 60);
+        public static Color Border   = Color.FromArgb(28, 38, 60);
 
         public static Font F(float size) { return new Font("Segoe UI", size); }
         public static Font FB(float size) { return new Font("Segoe UI", size, FontStyle.Bold); }
@@ -240,7 +245,7 @@ namespace LockGuard
             return c;
         }
 
-        public void Save()
+        public bool Save()
         {
             try
             {
@@ -253,8 +258,9 @@ namespace LockGuard
                 d["auto_start"] = AutoStart;
                 var ser = new JavaScriptSerializer();
                 File.WriteAllText(ConfigFile, ser.Serialize(d), Encoding.UTF8);
+                return true;
             }
-            catch { }
+            catch { return false; }
         }
 
         public string HashPassword(string pw)
@@ -701,8 +707,17 @@ namespace LockGuard
             {
                 using (LinearGradientBrush b = new LinearGradientBrush(rc, top, bot, LinearGradientMode.Vertical))
                     g.FillPath(b, path);
-                using (Pen pen = new Pen(Color.FromArgb(70, 255, 255, 255), 1))
+                using (Pen pen = new Pen(Enabled ? Color.FromArgb(50, 130, 190, 255) : Color.FromArgb(24, 34, 52), 1))
                     g.DrawPath(pen, path);
+            }
+
+            // glassy top highlight
+            if (Enabled)
+            {
+                using (GraphicsPath hl = UI.Rounded(new Rectangle(rc.X + 2, rc.Y + 1, rc.Width - 4, (rc.Height / 2) - 1), _rad))
+                using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(rc.X, rc.Y, rc.Width, rc.Height / 2),
+                    Color.FromArgb(28, Color.White), Color.Transparent, LinearGradientMode.Vertical))
+                    g.FillPath(b, hl);
             }
 
             // faint accent underline for neutral buttons
@@ -751,9 +766,9 @@ namespace LockGuard
             TitleStrip.BackColor = Color.FromArgb(12, 16, 24);
             TitleStrip.Paint += (s, e) =>
             {
-                using (SolidBrush b = new SolidBrush(Color.FromArgb(12, 16, 24))) e.Graphics.FillRectangle(b, 0, 0, TitleStrip.Width, TitleStrip.Height);
+                using (SolidBrush b = new SolidBrush(Color.FromArgb(9, 12, 20))) e.Graphics.FillRectangle(b, 0, 0, TitleStrip.Width, TitleStrip.Height);
                 using (SolidBrush b = new SolidBrush(UI.Border)) e.Graphics.FillRectangle(b, 0, TitleStrip.Height - 1, TitleStrip.Width, 1);
-                using (LinearGradientBrush b = new LinearGradientBrush(new Point(0, 0), new Point(TitleStrip.Width, 0), UI.Accent, UI.Violet))
+                using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(0, TitleStrip.Height - 2, TitleStrip.Width, 2), UI.Accent, UI.Violet, 0f))
                     e.Graphics.FillRectangle(b, 0, TitleStrip.Height - 2, TitleStrip.Width, 2);
                 using (SolidBrush b = new SolidBrush(UI.Text))
                     e.Graphics.DrawString(title, UI.FB(10), b, 14, 13);
@@ -877,7 +892,7 @@ namespace LockGuard
 
         void BtnOk_Click(object sender, EventArgs e)
         {
-            if (txtPass.Text.Length < 4) { lblErr.Text = "Password must be at least 4 characters."; return; }
+            if (txtPass.Text.Trim().Length < 4) { lblErr.Text = "Password must be at least 4 characters (not just spaces)."; return; }
             if (txtPass.Text != txtConfirm.Text) { lblErr.Text = "Passwords do not match."; return; }
             Password = txtPass.Text;
             DialogResult = DialogResult.OK;
@@ -966,7 +981,11 @@ namespace LockGuard
             bool newAuto = tglAuto.Checked;
             if (newAuto != cfg.AutoStart) changed = true;
             cfg.AutoStart = newAuto;
-            cfg.Save();
+            if (!cfg.Save())
+            {
+                MessageBox.Show("Could not write the config file.\n\nRun LockGuard as Administrator and try again.", "LockGuard", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -1005,7 +1024,6 @@ namespace LockGuard
         System.Windows.Forms.Timer timer;
         EventWaitHandle showEvent;
         bool internetOff = false;
-        bool promptedElevate = false;
         string[] disabledTargets = null;
         ulong lastRecordId = 0;
         Panel titleBar, btnClose, btnMin;
@@ -1019,8 +1037,8 @@ namespace LockGuard
 
             Text = "LockGuard v" + Program.Version;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(940, 700);
-            MinimumSize = new Size(940, 700);
+            ClientSize = new Size(1020, 720);
+            MinimumSize = new Size(1020, 720);
             BackColor = UI.Bg;
             ForeColor = UI.Text;
             Font = UI.F(9);
@@ -1034,6 +1052,7 @@ namespace LockGuard
             BuildLog();
             BuildTray();
             BuildMonitor();
+            Resize += (s, e) => Relayout();
 
             FormClosing += MainForm_FormClosing;
             Shown += (s, e) => Loaded();
@@ -1053,8 +1072,10 @@ namespace LockGuard
             titleBar.BackColor = Color.FromArgb(12, 16, 24);
             titleBar.Paint += (s, e) =>
             {
-                using (SolidBrush b = new SolidBrush(Color.FromArgb(12, 16, 24))) e.Graphics.FillRectangle(b, 0, 0, titleBar.Width, titleBar.Height);
+                using (SolidBrush b = new SolidBrush(Color.FromArgb(9, 12, 20))) e.Graphics.FillRectangle(b, 0, 0, titleBar.Width, titleBar.Height);
                 using (SolidBrush b = new SolidBrush(UI.Border)) e.Graphics.FillRectangle(b, 0, titleBar.Height - 1, titleBar.Width, 1);
+                using (LinearGradientBrush b = new LinearGradientBrush(new Rectangle(0, titleBar.Height - 2, titleBar.Width, 2), UI.Accent, UI.Violet, 0f))
+                    e.Graphics.FillRectangle(b, 0, titleBar.Height - 2, titleBar.Width, 2);
             };
             titleBar.MouseDown += TitleBar_MouseDown;
             Controls.Add(titleBar);
@@ -1099,13 +1120,13 @@ namespace LockGuard
             titleBar.Controls.Add(verLbl);
 
             lblPasswordBadge = new Label();
-            lblPasswordBadge.Text = "  PASSWORD PROTECTED  ";
+            lblPasswordBadge.Text = "  PROTECTED  ";
             lblPasswordBadge.Font = UI.FB(7.5f);
-            lblPasswordBadge.ForeColor = Color.FromArgb(255, 180, 120);
+            lblPasswordBadge.ForeColor = UI.Accent;
             lblPasswordBadge.AutoSize = true;
-            lblPasswordBadge.BackColor = Color.FromArgb(40, 20, 10);
-            lblPasswordBadge.Location = new Point(120, 12);
-            lblPasswordBadge.Padding = new Padding(3, 1, 3, 1);
+            lblPasswordBadge.BackColor = Color.FromArgb(16, 30, 44);
+            lblPasswordBadge.Location = new Point(130, 12);
+            lblPasswordBadge.Padding = new Padding(4, 2, 4, 2);
             titleBar.Controls.Add(lblPasswordBadge);
 
             // Close button
@@ -1274,7 +1295,8 @@ namespace LockGuard
         List<StatTile> statTiles = new List<StatTile>();
         void BuildStatusCards()
         {
-            int x = 18, y = 60, w = 214, h = 80, gap = 14;
+            statTiles.Clear();
+            int x = 18, y = 60, w = 234, h = 82, gap = 14;
             StatTile tile;
 
             tile = new StatTile("Mode", 0, UI.Accent, w, h);
@@ -1289,18 +1311,34 @@ namespace LockGuard
             tile.Location = new Point(x, y); Controls.Add(tile); statTiles.Add(tile);
             x += w + gap;
 
-            tile = new StatTile("Schedule", 3, Color.FromArgb(180, 130, 220), w, h);
+            tile = new StatTile("Schedule", 3, UI.Violet, w, h);
             tile.Location = new Point(x, y); Controls.Add(tile); statTiles.Add(tile);
+        }
+
+        void Relayout()
+        {
+            int W = ClientSize.Width, H = ClientSize.Height;
+            if (statTiles.Count == 4)
+            {
+                int w = (W - 36 - 42) / 4, gap = 14;
+                for (int i = 0; i < 4; i++) statTiles[i].Bounds = new Rectangle(18 + i * (w + gap), 60, w, 82);
+            }
+            if (adList != null && adList.Parent != null)
+            {
+                adList.Parent.Bounds = new Rectangle(18, 154, W - 36, 116);
+                adList.Bounds = new Rectangle(16, 32, (W - 36) - 32, 76);
+            }
+            if (logBox != null) logBox.Bounds = new Rectangle(20, 370, W - 40, H - 370 - 14);
         }
 
         void BuildAdapterCard()
         {
-            Panel card = Card(new Rectangle(18, 150, 904, 112), "NETWORK ADAPTERS");
+            Panel card = Card(new Rectangle(18, 154, 984, 116), "NETWORK ADAPTERS");
             Controls.Add(card);
 
             adList = new AdapterView();
-            adList.Bounds = new Rectangle(16, 32, 872, 72);
-            adList.BackColor = Color.FromArgb(14, 19, 28);
+            adList.Bounds = new Rectangle(16, 32, 952, 76);
+            adList.BackColor = Color.FromArgb(10, 14, 23);
             card.Controls.Add(adList);
         }
 
@@ -1313,6 +1351,7 @@ namespace LockGuard
             public AdapterView()
             {
                 SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+                Font = UI.F(9);
             }
             public void SetItems(List<AdapterInfo> list)
             {
@@ -1337,19 +1376,25 @@ namespace LockGuard
                         using (Pen p = new Pen(Color.FromArgb(90, dot), 1f))
                             g.DrawEllipse(p, 4, y + 4, 16, 16);
                         using (SolidBrush b = new SolidBrush(UI.Text))
-                            g.DrawString(a.Name, fName, b, 28, y + 1);
+                            g.DrawString(a.Name, fName, b, 30, y + 1);
                         using (SolidBrush b = new SolidBrush(UI.Dim))
-                            g.DrawString(a.Desc, fDetail, b, 28, y + 17);
-                        // status text right
+                            g.DrawString(a.Desc, fDetail, b, 30, y + 17);
+                        // status pill right
                         string st = a.Enabled ? "UP" : "DOWN";
                         if (!a.Enabled && a.Status.Contains("disconnect")) st = a.Status;
-                        using (SolidBrush b = new SolidBrush(a.Enabled ? UI.Green : UI.Orange))
-                        {
-                            StringFormat sf = new StringFormat();
-                            sf.Alignment = StringAlignment.Far;
-                            g.DrawString(st, UI.FB(8), b, new RectangleF(ClientSize.Width - 140, y + 4, 128, 20), sf);
-                            sf.Dispose();
-                        }
+                        Color pill = a.Enabled ? UI.Green : (a.Status.Contains("disconnect") ? UI.Orange : UI.Red);
+                        string stText = a.Enabled ? " UP " : (" " + st.ToUpperInvariant() + " ");
+                        Font pf = UI.FB(7.5f);
+                        SizeF tsz = g.MeasureString(stText, pf);
+                        float px = ClientSize.Width - tsz.Width - 22;
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(30, pill)))
+                            using (GraphicsPath pp = UI.Rounded(new RectangleF(px, y + 5, tsz.Width, tsz.Height), 7))
+                                g.FillPath(b, pp);
+                        using (Pen pp2 = new Pen(Color.FromArgb(90, pill), 1f))
+                            using (GraphicsPath pp3 = UI.Rounded(new RectangleF(px, y + 5, tsz.Width, tsz.Height), 7))
+                                g.DrawPath(pp2, pp3);
+                        using (SolidBrush b = new SolidBrush(pill))
+                            g.DrawString(stText, pf, b, px, y + 5);
                         if (i < items.Count - 1)
                             g.FillRectangle(sep, 12, y + rowH - 1, ClientSize.Width - 24, 1);
                     }
@@ -1359,34 +1404,34 @@ namespace LockGuard
 
         void BuildControls()
         {
-            btnDisable = new FlatBtn(); btnDisable.Text = "Disable Internet"; btnDisable.BaseColor = Color.FromArgb(150, 45, 55); btnDisable.HoverColor = Color.FromArgb(190, 60, 72); btnDisable.ForeColor = Color.White; btnDisable.Accent = true;
-            btnDisable.Location = new Point(18, 282); btnDisable.Size = new Size(200, 46); btnDisable.Font = UI.FB(11); Controls.Add(btnDisable);
+            btnDisable = new FlatBtn(); btnDisable.Text = " Disable Internet"; btnDisable.BaseColor = UI.RedDark; btnDisable.HoverColor = Color.FromArgb(185, 50, 68); btnDisable.ForeColor = Color.White; btnDisable.Accent = true;
+            btnDisable.Location = new Point(18, 286); btnDisable.Size = new Size(220, 46); btnDisable.Font = UI.FB(11); Controls.Add(btnDisable);
             btnDisable.Click += (s, e) => DisableAction();
 
-            btnEnable = new FlatBtn(); btnEnable.Text = "Enable Internet"; btnEnable.BaseColor = Color.FromArgb(45, 140, 80); btnEnable.HoverColor = Color.FromArgb(60, 175, 105); btnEnable.ForeColor = Color.White; btnEnable.Accent = true;
-            btnEnable.Location = new Point(226, 282); btnEnable.Size = new Size(200, 46); btnEnable.Font = UI.FB(11); Controls.Add(btnEnable);
+            btnEnable = new FlatBtn(); btnEnable.Text = " Enable Internet"; btnEnable.BaseColor = Color.FromArgb(16, 110, 80); btnEnable.HoverColor = Color.FromArgb(24, 160, 112); btnEnable.ForeColor = Color.White; btnEnable.Accent = true;
+            btnEnable.Location = new Point(250, 286); btnEnable.Size = new Size(220, 46); btnEnable.Font = UI.FB(11); Controls.Add(btnEnable);
             btnEnable.Click += (s, e) => EnableAction();
 
-            btnSettings = new FlatBtn(); btnSettings.Text = "Settings"; btnSettings.Location = new Point(434, 282); btnSettings.Size = new Size(140, 46); Controls.Add(btnSettings);
+            btnSettings = new FlatBtn(); btnSettings.Text = "Settings"; btnSettings.Location = new Point(482, 286); btnSettings.Size = new Size(150, 46); Controls.Add(btnSettings);
             btnSettings.Click += (s, e) => SettingsAction();
 
-            btnRefresh = new FlatBtn(); btnRefresh.Text = "Refresh"; btnRefresh.Location = new Point(582, 282); btnRefresh.Size = new Size(100, 46); Controls.Add(btnRefresh);
+            btnRefresh = new FlatBtn(); btnRefresh.Text = "Refresh"; btnRefresh.Location = new Point(644, 286); btnRefresh.Size = new Size(120, 46); Controls.Add(btnRefresh);
             btnRefresh.Click += (s, e) => { RefreshAll(); AddLog("Refreshed"); };
 
-            btnClear = new FlatBtn(); btnClear.Text = "Clear Log"; btnClear.Location = new Point(690, 282); btnClear.Size = new Size(120, 46); Controls.Add(btnClear);
+            btnClear = new FlatBtn(); btnClear.Text = "Clear Log"; btnClear.Location = new Point(776, 286); btnClear.Size = new Size(120, 46); Controls.Add(btnClear);
             btnClear.Click += (s, e) => logBox.Clear();
         }
 
         void BuildLog()
         {
-            var lbl = new Label(); lbl.Text = "ACTIVITY LOG"; lbl.Font = UI.FB(9); lbl.ForeColor = UI.Dim; lbl.Location = new Point(20, 342); lbl.AutoSize = true; Controls.Add(lbl);
+            var lbl = new Label(); lbl.Text = "ACTIVITY LOG"; lbl.Font = UI.FB(9); lbl.ForeColor = UI.Dim; lbl.Location = new Point(20, 346); lbl.AutoSize = true; Controls.Add(lbl);
             logBox = new TextBox();
             logBox.Multiline = true; logBox.ReadOnly = true;
-            logBox.BackColor = Color.FromArgb(13, 18, 26);
-            logBox.ForeColor = Color.FromArgb(120, 220, 140);
+            logBox.BackColor = UI.Bg2;
+            logBox.ForeColor = Color.FromArgb(90, 230, 160);
             logBox.Font = UI.FCode(9);
-            logBox.Location = new Point(20, 366);
-            logBox.Size = new Size(900, 318);
+            logBox.Location = new Point(20, 370);
+            logBox.Size = new Size(980, 336);
             logBox.BorderStyle = BorderStyle.None;
             logBox.ScrollBars = ScrollBars.Vertical;
             Controls.Add(logBox);
@@ -1484,6 +1529,7 @@ namespace LockGuard
             Logger.Info("Night: " + cfg.StartHour + ":00 - " + cfg.EndHour + ":00");
             RefreshAll();
             AddLog("LockGuard started - password protection ACTIVE");
+            lastNight = cfg.IsNight(DateTime.Now.Hour);
             AutoStartManager.ExePath = Program.AppPath;
             if (NetworkOps.IsAdmin()) { AddLog("Running as Administrator - full control"); statTiles[2].SetValue("ACTIVE", UI.Green); }
             else { AddLog("WARNING: Not admin. Use Settings or elevated launch for adapter control."); statTiles[2].SetValue("LIMITED", UI.Orange); }
@@ -1538,13 +1584,19 @@ namespace LockGuard
         void EnableAction()
         {
             if (!RequirePassword("enable internet")) return;
-            string[] targets = disabledTargets != null && disabledTargets.Length > 0 ? disabledTargets : TargetAdapters();
+            string[] remembered = (disabledTargets != null && disabledTargets.Length > 0) ? disabledTargets : null;
+            string[] fresh = TargetAdapters();
+            string[] targets = remembered != null ? remembered : fresh;
             if (targets == null || targets.Length == 0) { AddLog("No eligible adapters found."); return; }
             AddLog("Enabling internet...");
             string detail;
             bool ok = NetworkOps.EnableAll(targets, out detail);
             if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart LockGuard as Administrator?"); return; }
-            if (!ok && targets != disabledTargets) { ok = NetworkOps.EnableAll(TargetAdapters(), out detail); }
+            if (!ok && remembered != null && fresh != null && fresh.Length > 0)
+            {
+                // Remembered names may be stale - retry with a fresh scan.
+                ok = NetworkOps.EnableAll(fresh, out detail);
+            }
             if (!ok && detail != "not_admin") { ok = NetworkOps.EnableDisabled(out detail); }
             if (ok) { internetOff = false; disabledTargets = null; AddLog("Internet enabled"); Logger.Info("Internet RE-ENABLED"); }
             else if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart LockGuard as Administrator?"); }
@@ -1622,7 +1674,8 @@ namespace LockGuard
             statTiles[0].SetValue(night ? "NIGHT" : "DAY", night ? UI.Red : UI.Green);
 
             var ups = NetworkOps.EnabledPhysical();
-            if (internetOff || ups.Count == 0) statTiles[1].SetValue("OFF", UI.Red);
+            if (internetOff) statTiles[1].SetValue("OFF", UI.Red);
+            else if (ups.Count == 0) statTiles[1].SetValue("NO LINK", UI.Orange);
             else statTiles[1].SetValue("ON  (" + ups.Count + ")", UI.Green);
 
             statTiles[3].SetValue(cfg.StartHour.ToString("00") + ":00 - " + cfg.EndHour.ToString("00") + ":00", UI.Text);
@@ -1635,27 +1688,29 @@ namespace LockGuard
             adList.SetItems(NetworkOps.List());
 
             string m = night ? "NIGHT" : "DAY";
-            string n = (internetOff || ups.Count == 0) ? "OFF" : "ON";
+            string n = internetOff ? "OFF" : (ups.Count == 0 ? "NO LINK" : "ON");
             mStatus.Text = "Mode: " + m + "   Net: " + n;
             tray.Text = "LockGuard [" + m + "|" + n + "]";
         }
+
+        bool lastNight = false;
 
         void Tick(object sender, EventArgs e)
         {
             try
             {
-                bool wasNight = cfg.IsNight(DateTime.Now.AddSeconds(-5).Hour);
                 bool nowNight = cfg.IsNight(DateTime.Now.Hour);
-                if (nowNight && !wasNight)
+                if (nowNight && !lastNight)
                 {
                     AddLog(">>> Night started");
                     tray.ShowBalloonTip(4000, "LockGuard", "Night mode ON - internet will be cut on lock.", ToolTipIcon.Warning);
                 }
-                if (!nowNight && wasNight)
+                if (!nowNight && lastNight)
                 {
                     AddLog(">>> Night ended");
                     if (internetOff) { ForceEnable(); AddLog("Internet auto re-enabled (morning)"); }
                 }
+                lastNight = nowNight;
                 PollEvents();
                 RefreshAll();
             }
@@ -1668,6 +1723,7 @@ namespace LockGuard
             {
                 string query = "*[System[(EventID=4800 or EventID=4801 or EventID=4802 or EventID=4803)]]";
                 var logQuery = new EventLogQuery("Security", PathType.LogName, query);
+                logQuery.ReverseDirection = true;
                 using (EventLogReader reader = new EventLogReader(logQuery))
                 {
                     EventRecord ev;
@@ -1675,7 +1731,13 @@ namespace LockGuard
                     while ((ev = reader.ReadEvent()) != null)
                     {
                         long rec = ev.RecordId.GetValueOrDefault();
-                        if (lastRecordId > 0 && (ulong)rec <= lastRecordId) continue;
+                        if (lastRecordId == 0)
+                        {
+                            // First poll after startup: skip history, remember newest record only.
+                            lastRecordId = (ulong)rec;
+                            continue;
+                        }
+                        if ((ulong)rec <= lastRecordId) continue;
                         lastRecordId = (ulong)rec;
                         string user = "unknown";
                         try { if (ev.Properties != null && ev.Properties.Count > 1) user = Convert.ToString(ev.Properties[1].Value); } catch { }
@@ -1698,10 +1760,23 @@ namespace LockGuard
                         AddLog("NIGHT LOCK - cutting internet");
                         string detail;
                         var targets = TargetAdapters();
-                        if (targets != null && targetLen(targets) > 0 && NetworkOps.DisableAll(targets, out detail))
+                        if (targets == null || targetLen(targets) == 0)
                         {
-                            if (detail == "not_admin") { AddLog("Cannot cut internet: not admin"); }
-                            else { internetOff = true; disabledTargets = targets; AddLog("Internet cut"); tray.ShowBalloonTip(5000, "ALERT", "Locked at NIGHT - internet cut", ToolTipIcon.Warning); }
+                            AddLog("Cannot cut internet: no eligible adapters");
+                        }
+                        else if (NetworkOps.DisableAll(targets, out detail))
+                        {
+                            internetOff = true; disabledTargets = targets;
+                            AddLog("Internet cut");
+                            tray.ShowBalloonTip(5000, "ALERT", "Locked at NIGHT - internet cut", ToolTipIcon.Warning);
+                        }
+                        else if (detail == "not_admin")
+                        {
+                            AddLog("Cannot cut internet: not admin");
+                        }
+                        else
+                        {
+                            AddLog("Failed to cut internet");
                         }
                     }
                     break;
@@ -1736,9 +1811,15 @@ namespace LockGuard
         void ForceEnable()
         {
             string detail = "";
-            string[] targets = disabledTargets != null && disabledTargets.Length > 0 ? disabledTargets : TargetAdapters();
+            string[] remembered = (disabledTargets != null && disabledTargets.Length > 0) ? disabledTargets : null;
+            string[] fresh = TargetAdapters();
+            string[] targets = remembered != null ? remembered : fresh;
             bool ok = targets != null && targets.Length > 0 && NetworkOps.EnableAll(targets, out detail);
-            if (!ok && targets != disabledTargets) { ok = NetworkOps.EnableAll(TargetAdapters(), out detail); }
+            if (!ok && remembered != null && fresh != null && fresh.Length > 0)
+            {
+                // Remembered names may be stale (adapter renamed/plugged out) - retry with a fresh scan.
+                ok = NetworkOps.EnableAll(fresh, out detail);
+            }
             if (!ok && detail != "not_admin") { ok = NetworkOps.EnableDisabled(out detail); }
             if (ok)
             {

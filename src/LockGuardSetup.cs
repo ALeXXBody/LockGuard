@@ -15,7 +15,7 @@ namespace LockGuardSetup
     static class Program
     {
         public const string AppTitle = "LockGuard";
-        public const string Version = "3.0";
+        public const string Version = "3.1";
         public const string ResName = "LockGuard.exe";
         public static string InstallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LockGuard");
         public static string DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LockGuard");
@@ -256,7 +256,8 @@ namespace LockGuardSetup
                 string ps = "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + lnkPath +
                     "');$s.TargetPath='" + target + "';$s.WorkingDirectory='" + Path.GetDirectoryName(target) +
                     "';$s.IconLocation='" + target + "',0;$s.Save()";
-                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -Command \"" + ps.Replace("\"", "\\\"") + "\"");
+                string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(ps));
+                var psi = new ProcessStartInfo("powershell.exe", "-NoProfile -ExecutionPolicy Bypass -EncodedCommand " + encoded);
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 psi.WindowStyle = ProcessWindowStyle.Hidden;

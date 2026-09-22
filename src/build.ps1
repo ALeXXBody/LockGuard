@@ -1,4 +1,4 @@
-# Build LockGuard v3.0 - compiles C# to two exes
+# Build LockGuard v3.1 - compiles C# to two exes
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
@@ -57,7 +57,7 @@ $appManifest = Join-Path $PSScriptRoot "LockGuard.manifest"
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="3.0.0.0" name="LockGuard.app"/>
+  <assemblyIdentity version="3.1.0.0" name="LockGuard.app"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
@@ -78,7 +78,7 @@ $setupManifest = Join-Path $PSScriptRoot "LockGuardSetup.manifest"
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="3.0.0.0" name="LockGuardSetup.app"/>
+  <assemblyIdentity version="3.1.0.0" name="LockGuardSetup.app"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
