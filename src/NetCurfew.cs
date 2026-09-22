@@ -14,14 +14,15 @@ using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
-namespace LockGuard
+namespace NetCurfew
 {
     static class Program
     {
-        public const string AppTitle = "LockGuard";
+        public const string AppTitle = "NetCurfew";
         public const string Version = "1.0";
-        public const string SingleInstanceId = "LockGuard_SingleInstance_v3";
-        public const string ShowEventId = "LockGuard_ShowEvent_v3";        public static Icon AppIcon;
+        public const string SingleInstanceId = "NetCurfew_SingleInstance_v3";
+        public const string ShowEventId = "NetCurfew_ShowEvent_v3";
+        public static Icon AppIcon;
         public static string AppPath;
 
         [STAThread]
@@ -101,8 +102,8 @@ namespace LockGuard
                     }
                     else
                     {
-                        MessageBox.Show("A password is required to use LockGuard.\n\nPlease run LockGuard again and set a password.",
-                            "LockGuard - Setup Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("A password is required to use NetCurfew.\n\nPlease run NetCurfew again and set a password.",
+                            "NetCurfew - Setup Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -193,7 +194,7 @@ namespace LockGuard
 
         public string ResolveDataDir()
         {
-            string common = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "LockGuard");
+            string common = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "NetCurfew");
             try
             {
                 if (!Directory.Exists(common)) Directory.CreateDirectory(common);
@@ -204,7 +205,7 @@ namespace LockGuard
             }
             catch
             {
-                string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LockGuard");
+                string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NetCurfew");
                 if (!Directory.Exists(local)) Directory.CreateDirectory(local);
                 return local;
             }
@@ -300,7 +301,7 @@ namespace LockGuard
         public static void Init(string dir) { DataDir = dir; }
         static string LogFile()
         {
-            return Path.Combine(DataDir, "Logs", "LockGuard_" + DateTime.Now.ToString("yyyy-MM") + ".log");
+            return Path.Combine(DataDir, "Logs", "NetCurfew_" + DateTime.Now.ToString("yyyy-MM") + ".log");
         }
         public static void Info(string msg) { Write(msg, "INFO"); }
         public static void Warn(string msg) { Write(msg, "WARN"); }
@@ -516,7 +517,7 @@ namespace LockGuard
     // ---------- Scheduled task (autostart) ----------
     public class AutoStartManager
     {
-        public const string TaskName = "LockGuard_NightInternetMonitor";
+        public const string TaskName = "NetCurfew_NightInternetMonitor";
         public static string ExePath;
 
         public static bool Exists()
@@ -870,7 +871,7 @@ namespace LockGuard
             BuildGlassChrome("Set Your Password");
 
             var info = new Label();
-            info.Text = "This password is required to exit or disable LockGuard.\nKeep it safe - write it down somewhere.";
+            info.Text = "This password is required to exit or disable NetCurfew.\nKeep it safe - write it down somewhere.";
             info.ForeColor = UI.Dim; info.Location = new Point(28, 66); info.AutoSize = true; Controls.Add(info);
 
             var l1 = new Label(); l1.Text = "PASSWORD"; l1.Font = UI.FB(8); l1.ForeColor = UI.Dim; l1.Location = new Point(28, 108); l1.AutoSize = true; Controls.Add(l1);
@@ -974,7 +975,7 @@ namespace LockGuard
         void BtnSave_Click(object sender, EventArgs e)
         {
             int s = (int)numStart.Value, en = (int)numEnd.Value;
-            if (s == en) { MessageBox.Show("Start and End hours must be different.", "LockGuard", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (s == en) { MessageBox.Show("Start and End hours must be different.", "NetCurfew", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             cfg.StartHour = s;
             cfg.EndHour = en;
             bool newAuto = tglAuto.Checked;
@@ -982,7 +983,7 @@ namespace LockGuard
             cfg.AutoStart = newAuto;
             if (!cfg.Save())
             {
-                MessageBox.Show("Could not write the config file.\n\nRun LockGuard as Administrator and try again.", "LockGuard", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Could not write the config file.\n\nRun NetCurfew as Administrator and try again.", "NetCurfew", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             DialogResult = DialogResult.OK;
@@ -1130,7 +1131,7 @@ namespace LockGuard
             showEvent = ev;
             Logger.Init(config.DataDir);
 
-            Text = "LockGuard v" + Program.Version;
+            Text = "NetCurfew v" + Program.Version;
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(1020, 720);
             MinimumSize = new Size(1020, 720);
@@ -1197,7 +1198,7 @@ namespace LockGuard
             titleBar.Controls.Add(logo);
 
             var titleLbl = new Label();
-            titleLbl.Text = "LOCKGUARD";
+            titleLbl.Text = "NETCURFEW";
             titleLbl.Font = UI.FB(10);
             titleLbl.ForeColor = UI.Text;
             titleLbl.AutoSize = true;
@@ -1535,7 +1536,7 @@ namespace LockGuard
         void BuildTray()
         {
             tray = new NotifyIcon();
-            tray.Text = "LockGuard";
+            tray.Text = "NetCurfew";
             tray.Icon = Program.AppIcon;
             tray.Visible = true;
 
@@ -1619,17 +1620,17 @@ namespace LockGuard
 
         void Loaded()
         {
-            Logger.Info("LockGuard v" + Program.Version + " started");
+            Logger.Info("NetCurfew v" + Program.Version + " started");
             Logger.Info("User: " + Environment.UserName + " | PC: " + Environment.MachineName);
             Logger.Info("Night: " + cfg.StartHour + ":00 - " + cfg.EndHour + ":00");
             RefreshAll();
-            AddLog("LockGuard started - password protection ACTIVE");
+            AddLog("NetCurfew started - password protection ACTIVE");
             lastNight = cfg.IsNight(DateTime.Now.Hour);
             AutoStartManager.ExePath = Program.AppPath;
             if (NetworkOps.IsAdmin()) { AddLog("Running as Administrator - full control"); statTiles[2].SetValue("ACTIVE", UI.Green); }
             else { AddLog("WARNING: Not admin. Use Settings or elevated launch for adapter control."); statTiles[2].SetValue("LIMITED", UI.Orange); }
             timer.Start();
-            tray.ShowBalloonTip(2500, "LockGuard", "Running. Password required to exit.", ToolTipIcon.Info);
+            tray.ShowBalloonTip(2500, "NetCurfew", "Running. Password required to exit.", ToolTipIcon.Info);
             if (showEvent != null)
             {
                 var t = new Thread(() =>
@@ -1659,7 +1660,7 @@ namespace LockGuard
         {
             e.Cancel = true;
             Hide();
-            tray.ShowBalloonTip(1500, "LockGuard", "Running in tray. Right-click to manage.", ToolTipIcon.Info);
+            tray.ShowBalloonTip(1500, "NetCurfew", "Running in tray. Right-click to manage.", ToolTipIcon.Info);
         }
 
         void DisableAction()
@@ -1670,7 +1671,7 @@ namespace LockGuard
             AddLog("Disabling internet...");
             string detail;
             bool ok = NetworkOps.DisableAll(targets, out detail);
-            if (detail == "not_admin") { ElevatePrompt("Disabling the internet requires administrator rights. Restart LockGuard as Administrator?"); return; }
+            if (detail == "not_admin") { ElevatePrompt("Disabling the internet requires administrator rights. Restart NetCurfew as Administrator?"); return; }
             if (ok) { internetOff = true; disabledTargets = targets; AddLog("Internet disabled"); Logger.Info("Internet DISABLED (manual)"); }
             else AddLog("Disable FAILED");
             RefreshAll();
@@ -1686,7 +1687,7 @@ namespace LockGuard
             AddLog("Enabling internet...");
             string detail;
             bool ok = NetworkOps.EnableAll(targets, out detail);
-            if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart LockGuard as Administrator?"); return; }
+            if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart NetCurfew as Administrator?"); return; }
             if (!ok && remembered != null && fresh != null && fresh.Length > 0)
             {
                 // Remembered names may be stale - retry with a fresh scan.
@@ -1694,7 +1695,7 @@ namespace LockGuard
             }
             if (!ok && detail != "not_admin") { ok = NetworkOps.EnableDisabled(out detail); }
             if (ok) { internetOff = false; disabledTargets = null; AddLog("Internet enabled"); Logger.Info("Internet RE-ENABLED"); }
-            else if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart LockGuard as Administrator?"); }
+            else if (detail == "not_admin") { ElevatePrompt("Enabling the internet requires administrator rights. Restart NetCurfew as Administrator?"); }
             else AddLog("Nothing to enable");
             RefreshAll();
         }
@@ -1725,7 +1726,7 @@ namespace LockGuard
                     Process.Start(psi);
                     Application.Exit();
                 }
-                catch { MessageBox.Show("Elevation was cancelled.", "LockGuard"); }
+                catch { MessageBox.Show("Elevation was cancelled.", "NetCurfew"); }
             }
         }
 
@@ -1746,8 +1747,8 @@ namespace LockGuard
 
         void ExitAction()
         {
-            if (!RequirePassword("exit LockGuard")) return;
-            Logger.Info("LockGuard exited (password verified)");
+            if (!RequirePassword("exit NetCurfew")) return;
+            Logger.Info("NetCurfew exited (password verified)");
             tray.Visible = false;
             tray.Dispose();
             Application.Exit();
@@ -1755,10 +1756,10 @@ namespace LockGuard
 
         bool RequirePassword(string action)
         {
-            var f = new PasswordForm("LockGuard - Authentication", "Password to " + action + ":");
+            var f = new PasswordForm("NetCurfew - Authentication", "Password to " + action + ":");
             if (f.ShowDialog(this) != DialogResult.OK) return false;
             if (cfg.TestPassword(f.Password)) return true;
-            tray.ShowBalloonTip(4000, "LockGuard ALERT", "Wrong password. Attempt logged.", ToolTipIcon.Error);
+            tray.ShowBalloonTip(4000, "NetCurfew ALERT", "Wrong password. Attempt logged.", ToolTipIcon.Error);
             Logger.Alert("WRONG PASSWORD for: " + action);
             return false;
         }
@@ -1785,7 +1786,7 @@ namespace LockGuard
             string m = night ? "NIGHT" : "DAY";
             string n = internetOff ? "OFF" : (ups.Count == 0 ? "NO LINK" : "ON");
             mStatus.Text = "Mode: " + m + "   Net: " + n;
-            tray.Text = "LockGuard [" + m + "|" + n + "]";
+            tray.Text = "NetCurfew [" + m + "|" + n + "]";
         }
 
         bool lastNight = false;
@@ -1798,7 +1799,7 @@ namespace LockGuard
                 if (nowNight && !lastNight)
                 {
                     AddLog(">>> Night started");
-                    tray.ShowBalloonTip(4000, "LockGuard", "Night mode ON - internet will be cut on lock.", ToolTipIcon.Warning);
+                    tray.ShowBalloonTip(4000, "NetCurfew", "Night mode ON - internet will be cut on lock.", ToolTipIcon.Warning);
                 }
                 if (!nowNight && lastNight)
                 {

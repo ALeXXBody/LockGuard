@@ -1,4 +1,4 @@
-# Build LockGuard v1.0 - compiles LockGuard.exe, then the NSIS installer if available
+# Build NetCurfew v1.0 - compiles NetCurfew.exe, then the NSIS installer if available
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $ver = "1.0"
@@ -7,11 +7,11 @@ $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) { $csc = "C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe" }
 
 # ---- App manifest (asInvoker + dpiAware) ----
-$appManifest = Join-Path $PSScriptRoot "LockGuard.manifest"
+$appManifest = Join-Path $PSScriptRoot "NetCurfew.manifest"
 @'
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
-  <assemblyIdentity version="1.0.0.0" name="LockGuard.app"/>
+  <assemblyIdentity version="1.0.0.0" name="NetCurfew.app"/>
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
@@ -29,7 +29,7 @@ $appManifest = Join-Path $PSScriptRoot "LockGuard.manifest"
 Write-Host "[OK] Manifest written" -ForegroundColor Green
 
 # ---- App icon ----
-$icoPath = Join-Path $PSScriptRoot "lockguard.ico"
+$icoPath = Join-Path $PSScriptRoot "netcurfew.ico"
 Add-Type -AssemblyName System.Drawing
 $bmp = New-Object System.Drawing.Bitmap(64, 64)
 $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -65,9 +65,9 @@ $fs.Close()
 $g.Dispose(); $bmp.Dispose(); $icon.Dispose()
 Write-Host "[OK] Icon: $icoPath" -ForegroundColor Green
 
-# ---- Compile LockGuard.exe ----
-$appOut = Join-Path $PSScriptRoot "LockGuard.exe"
-Write-Host "`nCompiling LockGuard.exe..." -ForegroundColor Cyan
+# ---- Compile NetCurfew.exe ----
+$appOut = Join-Path $PSScriptRoot "NetCurfew.exe"
+Write-Host "`nCompiling NetCurfew.exe..." -ForegroundColor Cyan
 & $csc /nologo /target:winexe /optimize+ /out:$appOut `
     "/reference:System.dll" `
     "/reference:System.Core.dll" `
@@ -79,7 +79,7 @@ Write-Host "`nCompiling LockGuard.exe..." -ForegroundColor Cyan
     "/win32icon:$icoPath" `
     "/win32manifest:$appManifest" `
     (Join-Path $PSScriptRoot "AssemblyInfo.cs") `
-    (Join-Path $PSScriptRoot "LockGuard.cs")
+    (Join-Path $PSScriptRoot "NetCurfew.cs")
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: compile failed (code $LASTEXITCODE)" -ForegroundColor Red; exit 1 }
 Write-Host "[OK] App: $appOut ($([math]::Round((Get-Item $appOut).Length/1KB)) KB)" -ForegroundColor Green
 
@@ -88,7 +88,7 @@ $nsis = Get-Command makensis -ErrorAction SilentlyContinue
 if ($nsis) {
     Write-Host "`nBuilding installer..." -ForegroundColor Cyan
     Push-Location (Join-Path $PSScriptRoot "..\installer")
-    & makensis -V2 LockGuard.nsi
+    & makensis -V2 NetCurfew.nsi
     Pop-Location
     if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: installer build failed (code $LASTEXITCODE)" -ForegroundColor Red; exit 1 }
     Write-Host "[OK] Installer built" -ForegroundColor Green

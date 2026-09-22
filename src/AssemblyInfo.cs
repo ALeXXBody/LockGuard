@@ -1,11 +1,11 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("LockGuard")]
+[assembly: AssemblyTitle("NetCurfew")]
 [assembly: AssemblyDescription("Password-protected night internet guard & intrusion monitor")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("LockGuard")]
-[assembly: AssemblyProduct("LockGuard")]
+[assembly: AssemblyCompany("NetCurfew")]
+[assembly: AssemblyProduct("NetCurfew")]
 [assembly: AssemblyCopyright("Copyright (C) 2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

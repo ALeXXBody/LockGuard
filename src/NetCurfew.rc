@@ -1,5 +1,5 @@
-1 ICON "lockguard.ico"
-1 24 "LockGuard.manifest"
+1 ICON "netcurfew.ico"
+1 24 "NetCurfew.manifest"
 1 VERSIONINFO
 FILEVERSION     1,0,0,0
 PRODUCTVERSION  1,0,0,0
@@ -10,13 +10,13 @@ BEGIN
   BEGIN
     BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName",      "LockGuard"
-      VALUE "FileDescription",  "LockGuard - password-protected night internet guard"
+      VALUE "CompanyName",      "NetCurfew"
+      VALUE "FileDescription",  "NetCurfew - password-protected night internet guard"
       VALUE "FileVersion",      "1.0.0.0"
-      VALUE "InternalName",     "LockGuard"
+      VALUE "InternalName",     "NetCurfew"
       VALUE "LegalCopyright",   "Copyright (C) 2026"
-      VALUE "OriginalFilename", "LockGuard.exe"
-      VALUE "ProductName",      "LockGuard"
+      VALUE "OriginalFilename", "NetCurfew.exe"
+      VALUE "ProductName",      "NetCurfew"
       VALUE "ProductVersion",   "1.0.0.0"
     END
   END
